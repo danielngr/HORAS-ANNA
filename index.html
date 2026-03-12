@@ -1,488 +1,153 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="it">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Horas — Registro de Trabajo</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ore Lavoro">
+<title>Ore — Registro Lavoro</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #F5F2EC;
-    --surface: #EDEAE2;
-    --card: #FFFFFF;
-    --text: #1A1814;
-    --text-muted: #8C8880;
-    --accent: #2D4A3E;
-    --accent-light: #4A7A67;
-    --danger: #8B3A3A;
-    --border: #D8D4CC;
-    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    --bg: #F5F2EC; --surface: #EDEAE2; --card: #FFFFFF;
+    --text: #1A1814; --text-muted: #8C8880; --accent: #2D4A3E;
+    --accent-light: #4A7A67; --danger: #8B3A3A; --border: #D8D4CC;
+    --ferie: #4A6FA5; --malattia: #8B5A2B; --festivo: #6B4A8B;
   }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:0 0 60px; }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  header { background:var(--card); border-bottom:1px solid var(--border); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+  .logo { font-family:'DM Mono',monospace; font-size:13px; font-weight:500; letter-spacing:.08em; color:var(--accent); text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .sync-dot { width:7px; height:7px; border-radius:50%; background:#ccc; transition:background .3s; }
+  .sync-dot.syncing { background:#F4A800; } .sync-dot.ok { background:#4A7A67; } .sync-dot.error { background:#8B3A3A; }
+  .month-nav { display:flex; align-items:center; gap:10px; }
+  .month-nav button { background:none; border:1px solid var(--border); width:28px; height:28px; border-radius:6px; cursor:pointer; color:var(--text-muted); font-size:14px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+  .month-nav button:hover { background:var(--surface); color:var(--text); }
+  #current-month-label { font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--text); min-width:110px; text-align:center; }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 0 0 60px;
-  }
+  main { max-width:480px; margin:0 auto; padding:20px 16px; display:flex; flex-direction:column; gap:14px; }
 
-  header {
-    background: var(--card);
-    border-bottom: 1px solid var(--border);
-    padding: 20px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
+  .summary-card { background:var(--accent); border-radius:16px; padding:22px; color:white; }
+  .summary-label { font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; opacity:.65; margin-bottom:4px; }
+  .summary-hours { font-family:'DM Mono',monospace; font-size:46px; font-weight:300; line-height:1; margin-bottom:18px; }
+  .summary-hours span { font-size:19px; opacity:.6; }
+  .summary-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; }
+  .summary-item { background:rgba(255,255,255,.1); border-radius:10px; padding:9px 10px; }
+  .summary-item .s-label { font-size:9px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; opacity:.6; margin-bottom:4px; }
+  .summary-item .s-value { font-family:'DM Mono',monospace; font-size:14px; font-weight:500; }
+  .s-value.positive { color:#7ECBA1; } .s-value.negative { color:#F4A8A8; }
 
-  .logo {
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    color: var(--accent);
-    text-transform: uppercase;
-  }
+  .card { background:var(--card); border-radius:14px; border:1px solid var(--border); overflow:hidden; }
+  .card-body { padding:16px; }
+  .card-title { font-size:13px; font-weight:500; color:var(--text-muted); margin-bottom:12px; }
 
-  .month-nav {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
+  .settings-header { padding:13px 18px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; }
+  .settings-header span { font-size:13px; font-weight:500; color:var(--text-muted); }
+  .chevron { font-size:10px; color:var(--text-muted); transition:transform .2s; }
+  .settings-header.open .chevron { transform:rotate(180deg); }
+  .settings-body { display:none; padding:0 18px 18px; border-top:1px solid var(--border); }
+  .settings-body.open { display:block; }
+  .contract-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:14px; }
 
-  .month-nav button {
-    background: none;
-    border: 1px solid var(--border);
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    cursor: pointer;
-    color: var(--text-muted);
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s;
-  }
+  .input-group label { display:block; font-size:11px; font-weight:500; color:var(--text-muted); letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
+  .input-group input { width:100%; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:9px 10px; font-family:'DM Mono',monospace; font-size:14px; color:var(--text); outline:none; transition:border-color .15s; }
+  .input-group input:focus { border-color:var(--accent-light); }
 
-  .month-nav button:hover {
-    background: var(--surface);
-    color: var(--text);
-  }
+  .stamp-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .time-btn { border:1px solid var(--border); background:var(--surface); border-radius:10px; padding:13px; cursor:pointer; transition:all .15s; text-align:left; }
+  .time-btn:hover { border-color:var(--accent-light); background:#F0F5F3; }
+  .time-btn:active { transform:scale(.98); }
+  .tb-label { font-size:10px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px; }
+  .tb-time { font-family:'DM Mono',monospace; font-size:19px; font-weight:400; color:var(--text); }
+  .time-btn.entrata .tb-label { color:var(--accent-light); }
+  .time-btn.uscita .tb-label { color:var(--danger); }
 
-  #current-month-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-    min-width: 110px;
-    text-align: center;
-  }
+  .or-divider { text-align:center; font-size:11px; color:var(--text-muted); margin:10px 0; letter-spacing:.06em; text-transform:uppercase; }
 
-  main {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 24px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+  .manual-date-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .manual-date-row input[type="date"] { flex:1; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:9px 10px; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); outline:none; }
+  #date-hint { font-size:11px; color:var(--accent-light); font-family:'DM Mono',monospace; white-space:nowrap; min-width:90px; text-align:right; }
 
-  /* SUMMARY CARD */
-  .summary-card {
-    background: var(--accent);
-    border-radius: 16px;
-    padding: 24px;
-    color: white;
-  }
+  .manual-time-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:end; }
+  .manual-time-row input[type="time"] { width:100%; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:9px 10px; font-family:'DM Mono',monospace; font-size:14px; color:var(--text); outline:none; }
 
-  .summary-label {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    opacity: 0.65;
-    margin-bottom: 4px;
-  }
+  .add-btn { background:var(--accent); color:white; border:none; border-radius:8px; padding:9px 14px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:background .15s; white-space:nowrap; }
+  .add-btn:hover { background:var(--accent-light); }
+  .add-btn-full { width:100%; padding:11px; border-radius:10px; font-size:13px; }
 
-  .summary-hours {
-    font-family: 'DM Mono', monospace;
-    font-size: 48px;
-    font-weight: 300;
-    line-height: 1;
-    margin-bottom: 20px;
-  }
+  .special-date-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .special-date-row input[type="date"] { flex:1; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:9px 10px; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); outline:none; }
+  .special-type-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px; }
+  .type-btn { border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:9px 6px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--text-muted); transition:all .15s; text-align:center; }
+  .type-btn.sel-ferie { background:#EBF0F8; border-color:var(--ferie); color:var(--ferie); }
+  .type-btn.sel-malattia { background:#F5EDE5; border-color:var(--malattia); color:var(--malattia); }
+  .type-btn.sel-festivo { background:#F0EBF5; border-color:var(--festivo); color:var(--festivo); }
 
-  .summary-hours span {
-    font-size: 20px;
-    opacity: 0.6;
-  }
+  .entries-header { padding:13px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .entries-header span { font-size:13px; font-weight:500; color:var(--text-muted); }
+  .entries-count { font-family:'DM Mono',monospace; font-size:12px; background:var(--surface); padding:2px 8px; border-radius:20px; color:var(--text-muted); }
+  .entries-list { max-height:400px; overflow-y:auto; }
 
-  .summary-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-  }
+  .entry-item { display:flex; align-items:center; padding:11px 18px; border-bottom:1px solid var(--border); gap:10px; animation:slideIn .2s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+  .entry-item:last-child { border-bottom:none; }
+  .entry-date { font-family:'DM Mono',monospace; font-size:12px; color:var(--text-muted); min-width:66px; }
+  .entry-times { flex:1; display:flex; align-items:center; gap:6px; font-family:'DM Mono',monospace; font-size:13px; }
+  .arrow { color:var(--text-muted); font-size:10px; }
+  .entry-badge { font-size:11px; font-weight:500; padding:2px 8px; border-radius:20px; }
+  .badge-ferie { background:#EBF0F8; color:var(--ferie); }
+  .badge-malattia { background:#F5EDE5; color:var(--malattia); }
+  .badge-festivo { background:#F0EBF5; color:var(--festivo); }
+  .entry-total { font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:var(--accent); min-width:44px; text-align:right; }
+  .entry-delete { background:none; border:none; cursor:pointer; color:var(--border); font-size:16px; padding:2px 4px; border-radius:4px; transition:color .15s; line-height:1; }
+  .entry-delete:hover { color:var(--danger); }
+  .empty-state { padding:40px 24px; text-align:center; color:var(--text-muted); font-size:13px; }
+  .empty-state .emoji { font-size:28px; margin-bottom:8px; }
 
-  .summary-item {
-    background: rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 10px 12px;
-  }
+  .action-btns { display:flex; flex-direction:column; gap:10px; }
+  .btn-pdf { background:var(--accent); color:white; border:none; border-radius:10px; padding:13px 28px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:background .15s; width:100%; }
+  .btn-pdf:hover { background:var(--accent-light); }
+  .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .btn-secondary { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:11px 16px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all .15s; }
+  .btn-secondary:hover { background:var(--surface); }
+  .action-note { font-size:11px; color:var(--text-muted); text-align:center; line-height:1.5; }
 
-  .summary-item .s-label {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    opacity: 0.6;
-    margin-bottom: 4px;
-  }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--text); color:white; padding:10px 20px; border-radius:100px; font-size:13px; font-weight:500; transition:transform .3s cubic-bezier(.34,1.56,.64,1); z-index:999; white-space:nowrap; max-width:90vw; text-align:center; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
 
-  .summary-item .s-value {
-    font-family: 'DM Mono', monospace;
-    font-size: 16px;
-    font-weight: 500;
-  }
+  .loading-overlay { position:fixed; inset:0; background:rgba(245,242,236,.9); display:flex; align-items:center; justify-content:center; z-index:200; flex-direction:column; gap:12px; }
+  .spinner { width:24px; height:24px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .loading-overlay span { font-family:'DM Mono',monospace; font-size:13px; color:var(--accent); }
 
-  .summary-item .s-value.positive { color: #7ECBA1; }
-  .summary-item .s-value.negative { color: #F4A8A8; }
+  .hpd-info { margin-top:10px; padding:8px 10px; background:var(--surface); border-radius:8px; font-size:12px; color:var(--text-muted); font-family:'DM Mono',monospace; }
 
-  /* CONTRACT SETTINGS */
-  .settings-card {
-    background: var(--card);
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    overflow: hidden;
-  }
-
-  .settings-header {
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    user-select: none;
-  }
-
-  .settings-header span {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-    letter-spacing: 0.03em;
-  }
-
-  .settings-header .chevron {
-    font-size: 10px;
-    color: var(--text-muted);
-    transition: transform 0.2s;
-  }
-
-  .settings-header.open .chevron { transform: rotate(180deg); }
-
-  .settings-body {
-    display: none;
-    padding: 0 18px 18px;
-    border-top: 1px solid var(--border);
-  }
-
-  .settings-body.open { display: block; }
-
-  .contract-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 14px;
-  }
-
-  .input-group label {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-muted);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-  }
-
-  .input-group input {
-    width: 100%;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.15s;
-  }
-
-  .input-group input:focus { border-color: var(--accent-light); }
-
-  /* REGISTER SECTION */
-  .register-card {
-    background: var(--card);
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    padding: 18px;
-  }
-
-  .register-title {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-    letter-spacing: 0.03em;
-    margin-bottom: 14px;
-  }
-
-  .register-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-
-  .time-btn {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 10px;
-    padding: 14px;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-align: left;
-  }
-
-  .time-btn:hover { border-color: var(--accent-light); background: #F0F5F3; }
-
-  .time-btn .tb-label {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-  }
-
-  .time-btn .tb-time {
-    font-family: 'DM Mono', monospace;
-    font-size: 20px;
-    font-weight: 400;
-    color: var(--text);
-  }
-
-  .time-btn.entrada .tb-label { color: var(--accent-light); }
-  .time-btn.salida .tb-label { color: var(--danger); }
-
-  .manual-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 8px;
-    align-items: end;
-  }
-
-  .manual-row input[type="time"] {
-    width: 100%;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 9px 10px;
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.15s;
-  }
-
-  .manual-row input[type="date"] {
-    width: 100%;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 9px 10px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.15s;
-    grid-column: 1 / -1;
-  }
-
-  .manual-row input:focus { border-color: var(--accent-light); }
-
-  .add-btn {
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 9px 16px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-
-  .add-btn:hover { background: var(--accent-light); }
-
-  /* ENTRIES LIST */
-  .entries-card {
-    background: var(--card);
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    overflow: hidden;
-  }
-
-  .entries-header {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .entries-header span {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
-  }
-
-  .entries-count {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    background: var(--surface);
-    padding: 2px 8px;
-    border-radius: 20px;
-    color: var(--text-muted);
-  }
-
-  .entries-list {
-    max-height: 380px;
-    overflow-y: auto;
-  }
-
-  .entry-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--border);
-    gap: 12px;
-    animation: slideIn 0.2s ease;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .entry-item:last-child { border-bottom: none; }
-
-  .entry-date {
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    color: var(--text-muted);
-    min-width: 70px;
-  }
-
-  .entry-times {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-  }
-
-  .entry-times .arrow { color: var(--text-muted); font-size: 10px; }
-
-  .entry-total {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--accent);
-    min-width: 45px;
-    text-align: right;
-  }
-
-  .entry-delete {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--border);
-    font-size: 14px;
-    padding: 4px;
-    border-radius: 4px;
-    transition: color 0.15s;
-    line-height: 1;
-  }
-
-  .entry-delete:hover { color: var(--danger); }
-
-  .empty-state {
-    padding: 40px 24px;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-
-  .empty-state .emoji { font-size: 28px; margin-bottom: 8px; }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--text);
-    color: white;
-    padding: 10px 20px;
-    border-radius: 100px;
-    font-size: 13px;
-    font-weight: 500;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 999;
-    white-space: nowrap;
-  }
-
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* Divider */
-  .or-divider {
-    text-align: center;
-    font-size: 11px;
-    color: var(--text-muted);
-    margin: 10px 0 12px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  /* ── PRINT / PDF ── */
   @media print {
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { background: white !important; padding: 0 !important; }
-    header, .settings-card, .register-card, .toast, .pdf-btn-wrap, #import-input { display: none !important; }
-    main { max-width: 100% !important; padding: 0 !important; gap: 0 !important; }
-    .summary-card { border-radius: 0 !important; margin-bottom: 0 !important; page-break-inside: avoid; }
-    .entries-card { border: none !important; border-radius: 0 !important; }
-    .entries-list { max-height: none !important; overflow: visible !important; }
-    .entry-delete { display: none !important; }
-    .entry-item { border-bottom: 1px solid #E0DDD8 !important; page-break-inside: avoid; }
-    .print-header { display: block !important; }
+    * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+    body { background:white !important; padding:0 !important; }
+    header,.card,.action-btns,.toast,.loading-overlay,#import-input,.special-card,.register-card,.settings-card { display:none !important; }
+    .entries-card { display:block !important; border:none !important; border-radius:0 !important; }
+    main { max-width:100% !important; padding:0 !important; gap:0 !important; }
+    .summary-card { border-radius:0 !important; page-break-inside:avoid; }
+    .entries-list { max-height:none !important; overflow:visible !important; }
+    .entry-delete { display:none !important; }
+    .entry-item { border-bottom:1px solid #E0DDD8 !important; page-break-inside:avoid; }
+    .print-header { display:block !important; }
   }
-  .print-header { display: none; }
+  .print-header { display:none; }
 </style>
 </head>
 <body>
 
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <span>Caricamento...</span>
+</div>
+
 <header>
-  <div class="logo">⏱ Registro</div>
+  <div class="logo">⏱ Ore Lavoro <div class="sync-dot" id="sync-dot"></div></div>
   <div class="month-nav">
     <button onclick="changeMonth(-1)">‹</button>
     <div id="current-month-label">—</div>
@@ -492,200 +157,243 @@
 
 <main>
 
-  <!-- PRINT HEADER (only visible when printing) -->
-  <div class="print-header" id="print-header" style="padding:32px 32px 0;font-family:'DM Sans',sans-serif;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2D4A3E;padding-bottom:16px;margin-bottom:0;">
+  <!-- PRINT HEADER -->
+  <div class="print-header" id="print-header" style="padding:32px 32px 0;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2D4A3E;padding-bottom:16px;">
       <div>
-        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8C8880;margin-bottom:4px;">Registro de horas</div>
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8C8880;margin-bottom:4px;">Registro ore lavoro</div>
         <div id="print-month" style="font-size:26px;font-weight:500;color:#1A1814;font-family:'DM Mono',monospace;"></div>
       </div>
       <div style="text-align:right;">
-        <div id="print-total" style="font-size:26px;font-weight:300;font-family:'DM Mono',monospace;color:#2D4A3E;"></div>
+        <div id="print-total" style="font-size:22px;font-weight:300;font-family:'DM Mono',monospace;color:#2D4A3E;"></div>
         <div id="print-extras" style="font-size:13px;font-family:'DM Mono',monospace;margin-top:2px;"></div>
       </div>
     </div>
   </div>
 
-  <!-- SUMMARY -->
+  <!-- RIEPILOGO -->
   <div class="summary-card">
-    <div class="summary-label">Horas trabajadas</div>
+    <div class="summary-label">Ore lavorate</div>
     <div class="summary-hours" id="total-hours">0<span>h 00m</span></div>
     <div class="summary-grid">
-      <div class="summary-item">
-        <div class="s-label">Contrato</div>
-        <div class="s-value" id="contract-display">—</div>
-      </div>
-      <div class="summary-item">
-        <div class="s-label">Extras</div>
-        <div class="s-value" id="extras-display">—</div>
-      </div>
-      <div class="summary-item">
-        <div class="s-label">Días</div>
-        <div class="s-value" id="days-display">0</div>
-      </div>
+      <div class="summary-item"><div class="s-label">Contratto</div><div class="s-value" id="contract-display">—</div></div>
+      <div class="summary-item"><div class="s-label">Straord.</div><div class="s-value" id="extras-display">—</div></div>
+      <div class="summary-item"><div class="s-label">Giorni</div><div class="s-value" id="days-display">0</div></div>
+      <div class="summary-item"><div class="s-label">Speciali</div><div class="s-value" id="special-display">0</div></div>
     </div>
   </div>
 
-  <!-- SETTINGS -->
-  <div class="settings-card">
+  <!-- IMPOSTAZIONI -->
+  <div class="card">
     <div class="settings-header" onclick="toggleSettings(this)">
-      <span>⚙ Configuración de contrato</span>
+      <span>⚙ Impostazioni contratto</span>
       <span class="chevron">▼</span>
     </div>
     <div class="settings-body" id="settings-body">
       <div class="contract-grid">
-        <div class="input-group">
-          <label>Horas/semana</label>
-          <input type="number" id="hours-week" value="40" min="1" max="60" step="0.5" oninput="saveSettings(); updateSummary()">
-        </div>
-        <div class="input-group">
-          <label>Semanas/mes</label>
-          <input type="number" id="weeks-month" value="4.33" min="1" max="6" step="0.01" oninput="saveSettings(); updateSummary()">
-        </div>
+        <div class="input-group"><label>Ore/sett.</label><input type="number" id="hours-week" value="40" min="1" max="60" step="0.5" oninput="saveSettings();updateSummary()"></div>
+        <div class="input-group"><label>Giorni/sett.</label><input type="number" id="days-week" value="6" min="1" max="7" step="1" oninput="saveSettings();updateSummary()"></div>
+        <div class="input-group"><label>Sett./mese</label><input type="number" id="weeks-month" value="4.33" min="1" max="6" step="0.01" oninput="saveSettings();updateSummary()"></div>
+      </div>
+      <div class="hpd-info" id="hpd-info"></div>
+    </div>
+  </div>
+
+  <!-- REGISTRA ORA -->
+  <div class="card">
+    <div class="card-body">
+      <div class="card-title">Registra ora</div>
+      <div class="stamp-row">
+        <button class="time-btn entrata" onclick="stampTime('entrata')">
+          <div class="tb-label">▶ Entrata</div>
+          <div class="tb-time" id="stamp-entrata">--:--</div>
+        </button>
+        <button class="time-btn uscita" onclick="stampTime('uscita')">
+          <div class="tb-label">■ Uscita</div>
+          <div class="tb-time" id="stamp-uscita">--:--</div>
+        </button>
+      </div>
+      <div class="or-divider">o aggiungi manualmente</div>
+      <div class="manual-date-row">
+        <input type="date" id="manual-date" onchange="updateDateHint()">
+        <span id="date-hint"></span>
+      </div>
+      <div class="manual-time-row">
+        <div class="input-group" style="margin:0"><label>Entrata</label><input type="time" id="manual-entrata"></div>
+        <div class="input-group" style="margin:0"><label>Uscita</label><input type="time" id="manual-uscita"></div>
+        <button class="add-btn" onclick="addManual()">+ Aggiungi</button>
       </div>
     </div>
   </div>
 
-  <!-- REGISTER -->
-  <div class="register-card">
-    <div class="register-title">Registrar ahora</div>
-    <div class="register-row">
-      <button class="time-btn entrada" onclick="stampTime('entrada')">
-        <div class="tb-label">▶ Entrada</div>
-        <div class="tb-time" id="stamp-entrada">--:--</div>
-      </button>
-      <button class="time-btn salida" onclick="stampTime('salida')">
-        <div class="tb-label">■ Salida</div>
-        <div class="tb-time" id="stamp-salida">--:--</div>
-      </button>
-    </div>
-
-    <div class="or-divider">o añadir manualmente</div>
-
-    <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
-      <div style="flex:1">
-        <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block">Fecha</label>
-        <input type="date" id="manual-date" onchange="updateDateHint()" style="width:100%;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:9px 10px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);outline:none;">
+  <!-- GIORNI SPECIALI -->
+  <div class="card special-card">
+    <div class="card-body">
+      <div class="card-title">🏖 Giorno speciale</div>
+      <div class="special-date-row">
+        <input type="date" id="special-date">
+        <span id="special-hint" style="font-size:11px;color:var(--accent-light);font-family:'DM Mono',monospace;white-space:nowrap;"></span>
       </div>
-      <span id="date-hint" style="font-size:11px;color:var(--accent-light);font-family:'DM Mono',monospace;margin-top:18px;white-space:nowrap;"></span>
-    </div>
-    <div class="manual-row">
-      <div class="input-group" style="margin:0">
-        <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block">Entrada</label>
-        <input type="time" id="manual-entrada">
+      <div class="special-type-row">
+        <button class="type-btn" id="btn-ferie" onclick="selectType('ferie')">🏖 Ferie</button>
+        <button class="type-btn" id="btn-malattia" onclick="selectType('malattia')">🤒 Malattia</button>
+        <button class="type-btn" id="btn-festivo" onclick="selectType('festivo')">🏛 Festivo</button>
       </div>
-      <div class="input-group" style="margin:0">
-        <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block">Salida</label>
-        <input type="time" id="manual-salida">
-      </div>
-      <button class="add-btn" onclick="addManual()">+ Añadir</button>
+      <button class="add-btn add-btn-full" onclick="addSpecialDay()">+ Aggiungi giorno speciale</button>
     </div>
   </div>
 
-  <!-- ENTRIES -->
-  <div class="entries-card">
+  <!-- REGISTRI -->
+  <div class="card entries-card">
     <div class="entries-header">
-      <span>Registros del mes</span>
-      <span class="entries-count" id="entries-count">0 días</span>
+      <span>Registri del mese</span>
+      <span class="entries-count" id="entries-count">0 giorni</span>
     </div>
     <div class="entries-list" id="entries-list">
-      <div class="empty-state">
-        <div class="emoji">🕐</div>
-        Sin registros este mes
-      </div>
+      <div class="empty-state"><div class="emoji">🕐</div>Nessun registro questo mese</div>
     </div>
   </div>
 
-
-  <!-- ACTION BUTTONS -->
-  <div class="pdf-btn-wrap" style="display:flex;flex-direction:column;gap:10px;">
-    <button onclick="generatePDF()" style="background:var(--accent);color:white;border:none;border-radius:10px;padding:13px 28px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;width:100%;" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='var(--accent)'">
-      <span style="font-size:16px;">↓</span> Generar PDF del mes
-    </button>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-      <button onclick="exportData()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--card)'">
-        <span>⬆</span> Exportar datos
-      </button>
-      <button onclick="document.getElementById('import-input').click()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--card)'">
-        <span>⬇</span> Importar datos
-      </button>
+  <!-- AZIONI -->
+  <div class="action-btns">
+    <button class="btn-pdf" onclick="generatePDF()"><span style="font-size:16px">↓</span> Genera PDF del mese</button>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="exportData()">⬆ Esporta dati</button>
+      <button class="btn-secondary" onclick="document.getElementById('import-input').click()">⬇ Importa dati</button>
     </div>
-    <p style="font-size:11px;color:var(--text-muted);text-align:center;line-height:1.5;">Exporta tus datos antes de cambiar de navegador o instalar como app</p>
+    <p class="action-note">I dati sono sincronizzati nel cloud — accessibili da Safari e dall'app installata</p>
   </div>
-  <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
 
 </main>
 
+<input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
 <div class="toast" id="toast"></div>
 
 <script>
-  // ── STATE ──
-  let currentYear, currentMonth;
-  let stampEntrada = null, stampSalida = null;
+  const SUPABASE_URL = 'https://cqqeqqtikbplmdwseksb.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxcWVxcXRpa2JwbG1kd3Nla3NiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzMDkzNTcsImV4cCI6MjA4ODg4NTM1N30.qyExS2-KQTW6Y6flnGDFdFhxirDnuTWz6oASoNKQa5U';
+  const USER_ID = 'anna-default';
 
-  const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
-                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const DAYS   = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const MONTHS = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const DAYS   = ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+
+  let currentYear, currentMonth;
+  let stampEntrata = null;
+  let selectedType = null;
+  let allEntries = [];
+
+  // ── SUPABASE ──
+  function setSyncDot(state) { document.getElementById('sync-dot').className = 'sync-dot ' + state; }
+
+  async function sbFetch(method, path, body) {
+    setSyncDot('syncing');
+    try {
+      const res = await fetch(SUPABASE_URL + path, {
+        method,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal'
+        },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      setSyncDot('ok');
+      return res;
+    } catch(e) {
+      setSyncDot('error');
+      throw e;
+    }
+  }
+
+  async function loadAllEntries() {
+    try {
+      const res = await sbFetch('GET', `/rest/v1/work_entries?user_id=eq.${USER_ID}&select=*&order=date.asc`);
+      if (!res.ok) throw new Error('fetch failed');
+      allEntries = await res.json();
+      localStorage.setItem('work-entries-cache', JSON.stringify(allEntries));
+    } catch(e) {
+      setSyncDot('error');
+      showToast('Modalità offline — dati locali');
+      allEntries = JSON.parse(localStorage.getItem('work-entries-cache') || '[]');
+    }
+  }
+
+  async function upsertEntry(entry) {
+    try {
+      const res = await sbFetch('POST', '/rest/v1/work_entries', entry);
+      if (!res.ok) throw new Error();
+      const idx = allEntries.findIndex(e => e.date === entry.date && e.user_id === entry.user_id);
+      if (idx >= 0) allEntries[idx] = {...allEntries[idx], ...entry};
+      else allEntries.push(entry);
+      allEntries.sort((a,b) => a.date.localeCompare(b.date));
+      localStorage.setItem('work-entries-cache', JSON.stringify(allEntries));
+    } catch(e) {
+      setSyncDot('error');
+      showToast('Errore salvataggio');
+    }
+  }
+
+  async function deleteEntryDB(date) {
+    try {
+      await sbFetch('DELETE', `/rest/v1/work_entries?user_id=eq.${USER_ID}&date=eq.${date}`);
+      allEntries = allEntries.filter(e => !(e.date === date && e.user_id === USER_ID));
+      localStorage.setItem('work-entries-cache', JSON.stringify(allEntries));
+    } catch(e) {
+      setSyncDot('error');
+      showToast('Errore eliminazione');
+    }
+  }
+
+  function getMonthEntries() {
+    const prefix = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+    return allEntries.filter(e => e.user_id === USER_ID && e.date.startsWith(prefix));
+  }
 
   // ── INIT ──
-  function init() {
+  async function init() {
     const now = new Date();
     currentYear = now.getFullYear();
     currentMonth = now.getMonth();
     loadSettings();
-    setDefaultDate();
+    document.getElementById('manual-date').value = now.toISOString().slice(0,10);
+    document.getElementById('special-date').value = now.toISOString().slice(0,10);
     updateMonthLabel();
+    updateHpdInfo();
+    await loadAllEntries();
     renderEntries();
     updateSummary();
-  }
-
-  function setDefaultDate() {
-    const now = new Date();
-    document.getElementById('manual-date').value = now.toISOString().slice(0,10);
-    updateDateHint();
-  }
-
-  function updateDateHint() {
-    const dateVal = document.getElementById('manual-date').value;
-    const hint = document.getElementById('date-hint');
-    if (!dateVal) { hint.textContent = ''; return; }
-    const d = new Date(dateVal + 'T00:00:00');
-    const entryYear = d.getFullYear();
-    const entryMonth = d.getMonth();
-    const now = new Date();
-    if (entryYear === now.getFullYear() && entryMonth === now.getMonth()) {
-      hint.textContent = '';
-    } else {
-      hint.style.color = 'var(--accent-light)';
-      hint.textContent = `→ ${MONTHS[entryMonth]} ${entryYear}`;
-    }
-  }
-
-  // ── STORAGE KEY ──
-  function storageKey() {
-    return `work-tracker-${currentYear}-${currentMonth}`;
-  }
-
-  function getEntries() {
-    return JSON.parse(localStorage.getItem(storageKey()) || '[]');
-  }
-
-  function saveEntries(entries) {
-    localStorage.setItem(storageKey(), JSON.stringify(entries));
+    document.getElementById('loading').style.display = 'none';
   }
 
   // ── SETTINGS ──
   function loadSettings() {
     const s = JSON.parse(localStorage.getItem('work-tracker-settings') || '{}');
     if (s.hoursWeek) document.getElementById('hours-week').value = s.hoursWeek;
+    if (s.daysWeek)  document.getElementById('days-week').value  = s.daysWeek;
     if (s.weeksMonth) document.getElementById('weeks-month').value = s.weeksMonth;
   }
 
   function saveSettings() {
     localStorage.setItem('work-tracker-settings', JSON.stringify({
-      hoursWeek: document.getElementById('hours-week').value,
+      hoursWeek:  document.getElementById('hours-week').value,
+      daysWeek:   document.getElementById('days-week').value,
       weeksMonth: document.getElementById('weeks-month').value
     }));
+    updateHpdInfo();
+  }
+
+  function hoursPerDayMins() {
+    const hw = parseFloat(document.getElementById('hours-week').value) || 40;
+    const dw = parseFloat(document.getElementById('days-week').value)  || 6;
+    return Math.round((hw / dw) * 60);
+  }
+
+  function updateHpdInfo() {
+    const mins = hoursPerDayMins();
+    const h = Math.floor(mins/60), m = mins % 60;
+    document.getElementById('hpd-info').textContent =
+      `Ore per giorno speciale (ferie/malattia): ${h}h ${String(m).padStart(2,'0')}m`;
   }
 
   function toggleSettings(el) {
@@ -704,245 +412,239 @@
   }
 
   function updateMonthLabel() {
-    document.getElementById('current-month-label').textContent =
-      `${MONTHS[currentMonth]} ${currentYear}`;
+    document.getElementById('current-month-label').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
   }
 
-  // ── STAMP TIME ──
+  function updateDateHint() {
+    const val = document.getElementById('manual-date').value;
+    const hint = document.getElementById('date-hint');
+    if (!val) { hint.textContent = ''; return; }
+    const d = new Date(val + 'T00:00:00');
+    const now = new Date();
+    hint.textContent = (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth())
+      ? '' : `→ ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  }
+
+  // ── STAMP ──
   function stampTime(type) {
     const now = new Date();
     const hhmm = now.toTimeString().slice(0,5);
-    if (type === 'entrada') {
-      stampEntrada = hhmm;
-      document.getElementById('stamp-entrada').textContent = hhmm;
-      showToast(`Entrada: ${hhmm}`);
+    if (type === 'entrata') {
+      stampEntrata = hhmm;
+      document.getElementById('stamp-entrata').textContent = hhmm;
+      showToast(`Entrata: ${hhmm}`);
     } else {
-      stampSalida = hhmm;
-      document.getElementById('stamp-salida').textContent = hhmm;
-      if (stampEntrada) {
-        const today = now.toISOString().slice(0,10);
-        addEntry(today, stampEntrada, stampSalida);
-        stampEntrada = null; stampSalida = null;
-        document.getElementById('stamp-entrada').textContent = '--:--';
-        document.getElementById('stamp-salida').textContent = '--:--';
-      } else {
-        showToast('Registra primero la entrada ↑');
-      }
+      if (!stampEntrata) { showToast("Registra prima l'entrata ↑"); return; }
+      const today = now.toISOString().slice(0,10);
+      saveEntry(today, stampEntrata, hhmm, null);
+      stampEntrata = null;
+      document.getElementById('stamp-entrata').textContent = '--:--';
+      document.getElementById('stamp-uscita').textContent = '--:--';
     }
   }
 
-  // ── MANUAL ADD ──
+  // ── MANUAL ──
   function addManual() {
-    const date = document.getElementById('manual-date').value;
-    const entrada = document.getElementById('manual-entrada').value;
-    const salida = document.getElementById('manual-salida').value;
-    if (!date || !entrada || !salida) { showToast('Completa todos los campos'); return; }
-    // Allow overnight shifts: if salida <= entrada, assume next day
-    const [eh, em] = entrada.split(':').map(Number);
-    const [sh, sm] = salida.split(':').map(Number);
-    const entradaMins = eh * 60 + em;
-    const salidaMins = sh * 60 + sm;
-    // Only block if same time exactly
-    if (entradaMins === salidaMins) { showToast('La entrada y salida no pueden ser iguales'); return; }
-    addEntry(date, entrada, salida);
-    document.getElementById('manual-entrada').value = '';
-    document.getElementById('manual-salida').value = '';
+    const date    = document.getElementById('manual-date').value;
+    const entrata = document.getElementById('manual-entrata').value;
+    const uscita  = document.getElementById('manual-uscita').value;
+    if (!date || !entrata || !uscita) { showToast('Compila tutti i campi'); return; }
+    const [eh,em] = entrata.split(':').map(Number);
+    const [sh,sm] = uscita.split(':').map(Number);
+    if (eh*60+em === sh*60+sm) { showToast('Entrata e uscita uguali'); return; }
+    saveEntry(date, entrata, uscita, null);
+    document.getElementById('manual-entrata').value = '';
+    document.getElementById('manual-uscita').value  = '';
   }
 
-  function addEntry(date, entrada, salida) {
+  // ── GIORNI SPECIALI ──
+  function selectType(type) {
+    selectedType = type;
+    ['ferie','malattia','festivo'].forEach(t => {
+      document.getElementById('btn-'+t).className = 'type-btn' + (t === type ? ' sel-'+t : '');
+    });
+  }
+
+  function addSpecialDay() {
+    const date = document.getElementById('special-date').value;
+    if (!date)         { showToast('Seleziona una data'); return; }
+    if (!selectedType) { showToast('Seleziona il tipo di giorno'); return; }
+    saveEntry(date, null, null, selectedType);
+    selectedType = null;
+    ['ferie','malattia','festivo'].forEach(t => {
+      document.getElementById('btn-'+t).className = 'type-btn';
+    });
+  }
+
+  // ── SAVE (unified) ──
+  async function saveEntry(date, entrata, uscita, tipo) {
+    const entry = { user_id: USER_ID, date, entrata: entrata||null, uscita: uscita||null, tipo: tipo||null };
+    await upsertEntry(entry);
     const d = new Date(date + 'T00:00:00');
-    const entryYear = d.getFullYear();
-    const entryMonth = d.getMonth();
-
-    // Save to the correct month's storage key (may differ from current view)
-    const key = `work-tracker-${entryYear}-${entryMonth}`;
-    const entries = JSON.parse(localStorage.getItem(key) || '[]');
-    const idx = entries.findIndex(e => e.date === date);
-    const item = { date, entrada, salida };
-    if (idx >= 0) entries[idx] = item;
-    else entries.push(item);
-    entries.sort((a,b) => a.date.localeCompare(b.date));
-    localStorage.setItem(key, JSON.stringify(entries));
-
-    // If the saved date belongs to a different month, offer to navigate there
-    const isSameMonth = entryYear === currentYear && entryMonth === currentMonth;
-    const monthName = MONTHS[entryMonth];
-    if (!isSameMonth) {
-      showToast(`Guardado en ${monthName} ${entryYear} ✓ — usa ‹ › para verlo`);
-    } else {
+    if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) {
       renderEntries();
       updateSummary();
-      showToast('Registro guardado ✓');
+      showToast('Salvato ✓');
+    } else {
+      showToast(`Salvato in ${MONTHS[d.getMonth()]} ${d.getFullYear()} ✓ — usa ‹ › per vederlo`);
     }
+  }
+
+  // ── DELETE ──
+  async function deleteEntry(date) {
+    if (!confirm('Eliminare questo registro?')) return;
+    await deleteEntryDB(date);
+    renderEntries();
+    updateSummary();
+    showToast('Eliminato');
   }
 
   // ── RENDER ──
+  function calcMins(h1, h2) {
+    const [ah,am] = h1.split(':').map(Number);
+    const [bh,bm] = h2.split(':').map(Number);
+    let m = (bh*60+bm)-(ah*60+am);
+    if (m <= 0) m += 1440;
+    return m;
+  }
+
+  function fmtMins(mins) {
+    const h = Math.floor(mins/60), m = mins%60;
+    return `${h}h${m > 0 ? m+'m' : ''}`;
+  }
+
   function renderEntries() {
-    const entries = getEntries();
+    const entries = getMonthEntries();
     const list = document.getElementById('entries-list');
     document.getElementById('entries-count').textContent =
-      `${entries.length} día${entries.length !== 1 ? 's' : ''}`;
+      `${entries.length} giorn${entries.length !== 1 ? 'i' : 'o'}`;
 
     if (!entries.length) {
-      list.innerHTML = `<div class="empty-state"><div class="emoji">🕐</div>Sin registros este mes</div>`;
+      list.innerHTML = `<div class="empty-state"><div class="emoji">🕐</div>Nessun registro questo mese</div>`;
       return;
     }
 
-    list.innerHTML = entries.map((e, i) => {
-      const mins = calcMins(e.entrada, e.salida);
-      const h = Math.floor(mins/60);
-      const m = mins % 60;
+    const labels = { ferie:'🏖 Ferie', malattia:'🤒 Malattia', festivo:'🏛 Festivo' };
+    const hpdMins = hoursPerDayMins();
+
+    list.innerHTML = entries.map(e => {
       const d = new Date(e.date + 'T00:00:00');
       const dayLabel = `${DAYS[d.getDay()]} ${d.getDate()}`;
-      return `
-        <div class="entry-item">
+
+      if (e.tipo) {
+        return `<div class="entry-item">
           <div class="entry-date">${dayLabel}</div>
-          <div class="entry-times">
-            <span>${e.entrada}</span>
-            <span class="arrow">→</span>
-            <span>${e.salida}</span>
-          </div>
-          <div class="entry-total">${h}h${m > 0 ? m+'m' : ''}</div>
-          <button class="entry-delete" onclick="deleteEntry(${i})" title="Eliminar">×</button>
+          <div class="entry-times" style="flex:1"><span class="entry-badge badge-${e.tipo}">${labels[e.tipo]}</span></div>
+          <div class="entry-total">${fmtMins(hpdMins)}</div>
+          <button class="entry-delete" onclick="deleteEntry('${e.date}')">×</button>
         </div>`;
+      }
+
+      const mins = calcMins(e.entrata, e.uscita);
+      return `<div class="entry-item">
+        <div class="entry-date">${dayLabel}</div>
+        <div class="entry-times"><span>${e.entrata}</span><span class="arrow">→</span><span>${e.uscita}</span></div>
+        <div class="entry-total">${fmtMins(mins)}</div>
+        <button class="entry-delete" onclick="deleteEntry('${e.date}')">×</button>
+      </div>`;
     }).join('');
   }
 
-  function deleteEntry(i) {
-    const entries = getEntries();
-    entries.splice(i, 1);
-    saveEntries(entries);
-    renderEntries();
-    updateSummary();
-    showToast('Registro eliminado');
-  }
-
   // ── SUMMARY ──
-  function calcMins(h1, h2) {
-    const [ah, am] = h1.split(':').map(Number);
-    const [bh, bm] = h2.split(':').map(Number);
-    let mins = (bh*60+bm) - (ah*60+am);
-    if (mins <= 0) mins += 24 * 60; // overnight shift
-    return mins;
-  }
-
   function updateSummary() {
-    const entries = getEntries();
-    let totalMins = 0;
-    entries.forEach(e => { totalMins += calcMins(e.entrada, e.salida); });
+    const entries = getMonthEntries();
+    const hpdMins = hoursPerDayMins();
+    let totalMins = 0, specialCount = 0;
 
-    const totalH = Math.floor(totalMins/60);
-    const totalM = totalMins % 60;
+    entries.forEach(e => {
+      if (e.tipo) { totalMins += hpdMins; specialCount++; }
+      else if (e.entrata && e.uscita) totalMins += calcMins(e.entrata, e.uscita);
+    });
 
-    const hoursWeek = parseFloat(document.getElementById('hours-week').value) || 40;
-    const weeksMonth = parseFloat(document.getElementById('weeks-month').value) || 4.33;
-    const contractMins = Math.round(hoursWeek * weeksMonth * 60);
-
-    const contractH = Math.floor(contractMins/60);
-    const contractM = contractMins % 60;
-
+    const hw = parseFloat(document.getElementById('hours-week').value) || 40;
+    const wm = parseFloat(document.getElementById('weeks-month').value) || 4.33;
+    const contractMins = Math.round(hw * wm * 60);
     const extraMins = totalMins - contractMins;
-    const extraH = Math.floor(Math.abs(extraMins)/60);
-    const extraM = Math.abs(extraMins) % 60;
-    const extraSign = extraMins >= 0 ? '+' : '-';
+    const sign = extraMins >= 0 ? '+' : '-';
 
     document.getElementById('total-hours').innerHTML =
-      `${totalH}<span>h ${totalM.toString().padStart(2,'0')}m</span>`;
-
-    document.getElementById('contract-display').textContent =
-      `${contractH}h${contractM > 0 ? contractM+'m' : ''}`;
-
-    const extrasEl = document.getElementById('extras-display');
-    extrasEl.textContent = `${extraSign}${extraH}h${extraM > 0 ? extraM+'m' : ''}`;
-    extrasEl.className = 's-value ' + (extraMins >= 0 ? 'positive' : 'negative');
-
-    document.getElementById('days-display').textContent = entries.length;
+      `${Math.floor(totalMins/60)}<span>h ${String(totalMins%60).padStart(2,'0')}m</span>`;
+    document.getElementById('contract-display').textContent = fmtMins(contractMins);
+    const el = document.getElementById('extras-display');
+    el.textContent = sign + fmtMins(Math.abs(extraMins));
+    el.className = 's-value ' + (extraMins >= 0 ? 'positive' : 'negative');
+    document.getElementById('days-display').textContent = entries.filter(e => !e.tipo).length;
+    document.getElementById('special-display').textContent = specialCount;
   }
 
-  // ── TOAST ──
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    clearTimeout(t._timer);
-    t._timer = setTimeout(() => t.classList.remove('show'), 2200);
-  }
-
-
-  // ── GENERATE PDF ──
+  // ── PDF ──
   function generatePDF() {
-    const entries = getEntries();
-    if (!entries.length) { showToast('No hay registros este mes'); return; }
-
-    // Fill print header
-    document.getElementById('print-month').textContent =
-      MONTHS[currentMonth] + ' ' + currentYear;
-
-    // Recalc totals for header
+    const entries = getMonthEntries();
+    if (!entries.length) { showToast('Nessun registro questo mese'); return; }
+    const hpdMins = hoursPerDayMins();
     let totalMins = 0;
-    entries.forEach(e => { totalMins += calcMins(e.entrada, e.salida); });
-    const totalH = Math.floor(totalMins/60);
-    const totalM = totalMins % 60;
-    document.getElementById('print-total').textContent =
-      totalH + 'h ' + totalM.toString().padStart(2,'0') + 'm trabajadas';
-
-    const hoursWeek = parseFloat(document.getElementById('hours-week').value) || 40;
-    const weeksMonth = parseFloat(document.getElementById('weeks-month').value) || 4.33;
-    const contractMins = Math.round(hoursWeek * weeksMonth * 60);
+    entries.forEach(e => {
+      if (e.tipo) totalMins += hpdMins;
+      else if (e.entrata && e.uscita) totalMins += calcMins(e.entrata, e.uscita);
+    });
+    const hw = parseFloat(document.getElementById('hours-week').value) || 40;
+    const wm = parseFloat(document.getElementById('weeks-month').value) || 4.33;
+    const contractMins = Math.round(hw * wm * 60);
     const extraMins = totalMins - contractMins;
-    const extraH = Math.floor(Math.abs(extraMins)/60);
-    const extraM = Math.abs(extraMins) % 60;
     const sign = extraMins >= 0 ? '+' : '-';
-    const extrasEl = document.getElementById('print-extras');
-    extrasEl.textContent = sign + extraH + 'h ' + extraM.toString().padStart(2,'0') + 'm extras';
-    extrasEl.style.color = extraMins >= 0 ? '#2D6B4F' : '#8B3A3A';
 
+    document.getElementById('print-month').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+    document.getElementById('print-total').textContent = fmtMins(totalMins) + ' lavorate';
+    const pe = document.getElementById('print-extras');
+    pe.textContent = sign + fmtMins(Math.abs(extraMins)) + ' straordinari';
+    pe.style.color = extraMins >= 0 ? '#2D6B4F' : '#8B3A3A';
     window.print();
   }
 
   // ── EXPORT / IMPORT ──
   function exportData() {
-    const allData = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key.startsWith('work-tracker')) {
-        allData[key] = JSON.parse(localStorage.getItem(key));
-      }
-    }
-    if (Object.keys(allData).length === 0) { showToast('No hay datos para exportar'); return; }
-    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+    if (!allEntries.length) { showToast('Nessun dato da esportare'); return; }
+    const blob = new Blob([JSON.stringify(allEntries, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'registro-horas-backup.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Datos exportados ✓');
+    a.href = url; a.download = `ore-lavoro-${new Date().toISOString().slice(0,10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+    showToast('Dati esportati ✓');
   }
 
-  function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+  async function importData(event) {
+    const file = event.target.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
       try {
         const data = JSON.parse(e.target.result);
+        const entries = Array.isArray(data) ? data : Object.values(data).flat();
         let count = 0;
-        for (const key in data) {
-          if (key.startsWith('work-tracker')) {
-            localStorage.setItem(key, JSON.stringify(data[key]));
+        for (const entry of entries) {
+          if (entry.date) {
+            await upsertEntry({
+              user_id: USER_ID, date: entry.date,
+              entrata: entry.entrata || entry.entrada || null,
+              uscita:  entry.uscita  || entry.salida  || null,
+              tipo: entry.tipo || null
+            });
             count++;
           }
         }
-        renderEntries();
-        updateSummary();
-        showToast(`${count} mes${count !== 1 ? 'es' : ''} importado${count !== 1 ? 's' : ''} ✓`);
-      } catch(err) {
-        showToast('Error al leer el archivo');
-      }
+        renderEntries(); updateSummary();
+        showToast(`${count} registri importati ✓`);
+      } catch { showToast('Errore nel file'); }
       event.target.value = '';
     };
     reader.readAsText(file);
+  }
+
+  // ── TOAST ──
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
   }
 
   init();
