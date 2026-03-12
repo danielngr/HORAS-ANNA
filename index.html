@@ -462,6 +462,21 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
+
+  /* ── PRINT / PDF ── */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white !important; padding: 0 !important; }
+    header, .settings-card, .register-card, .toast, .pdf-btn-wrap, #import-input { display: none !important; }
+    main { max-width: 100% !important; padding: 0 !important; gap: 0 !important; }
+    .summary-card { border-radius: 0 !important; margin-bottom: 0 !important; page-break-inside: avoid; }
+    .entries-card { border: none !important; border-radius: 0 !important; }
+    .entries-list { max-height: none !important; overflow: visible !important; }
+    .entry-delete { display: none !important; }
+    .entry-item { border-bottom: 1px solid #E0DDD8 !important; page-break-inside: avoid; }
+    .print-header { display: block !important; }
+  }
+  .print-header { display: none; }
 </style>
 </head>
 <body>
@@ -476,6 +491,20 @@
 </header>
 
 <main>
+
+  <!-- PRINT HEADER (only visible when printing) -->
+  <div class="print-header" id="print-header" style="padding:32px 32px 0;font-family:'DM Sans',sans-serif;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2D4A3E;padding-bottom:16px;margin-bottom:0;">
+      <div>
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8C8880;margin-bottom:4px;">Registro de horas</div>
+        <div id="print-month" style="font-size:26px;font-weight:500;color:#1A1814;font-family:'DM Mono',monospace;"></div>
+      </div>
+      <div style="text-align:right;">
+        <div id="print-total" style="font-size:26px;font-weight:300;font-family:'DM Mono',monospace;color:#2D4A3E;"></div>
+        <div id="print-extras" style="font-size:13px;font-family:'DM Mono',monospace;margin-top:2px;"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- SUMMARY -->
   <div class="summary-card">
@@ -566,6 +595,24 @@
       </div>
     </div>
   </div>
+
+
+  <!-- ACTION BUTTONS -->
+  <div class="pdf-btn-wrap" style="display:flex;flex-direction:column;gap:10px;">
+    <button onclick="generatePDF()" style="background:var(--accent);color:white;border:none;border-radius:10px;padding:13px 28px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;width:100%;" onmouseover="this.style.background='var(--accent-light)'" onmouseout="this.style.background='var(--accent)'">
+      <span style="font-size:16px;">↓</span> Generar PDF del mes
+    </button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="exportData()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--card)'">
+        <span>⬆</span> Exportar datos
+      </button>
+      <button onclick="document.getElementById('import-input').click()" style="background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.15s;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='var(--card)'">
+        <span>⬇</span> Importar datos
+      </button>
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);text-align:center;line-height:1.5;">Exporta tus datos antes de cambiar de navegador o instalar como app</p>
+  </div>
+  <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
 
 </main>
 
@@ -819,6 +866,83 @@
     t.classList.add('show');
     clearTimeout(t._timer);
     t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+
+  // ── GENERATE PDF ──
+  function generatePDF() {
+    const entries = getEntries();
+    if (!entries.length) { showToast('No hay registros este mes'); return; }
+
+    // Fill print header
+    document.getElementById('print-month').textContent =
+      MONTHS[currentMonth] + ' ' + currentYear;
+
+    // Recalc totals for header
+    let totalMins = 0;
+    entries.forEach(e => { totalMins += calcMins(e.entrada, e.salida); });
+    const totalH = Math.floor(totalMins/60);
+    const totalM = totalMins % 60;
+    document.getElementById('print-total').textContent =
+      totalH + 'h ' + totalM.toString().padStart(2,'0') + 'm trabajadas';
+
+    const hoursWeek = parseFloat(document.getElementById('hours-week').value) || 40;
+    const weeksMonth = parseFloat(document.getElementById('weeks-month').value) || 4.33;
+    const contractMins = Math.round(hoursWeek * weeksMonth * 60);
+    const extraMins = totalMins - contractMins;
+    const extraH = Math.floor(Math.abs(extraMins)/60);
+    const extraM = Math.abs(extraMins) % 60;
+    const sign = extraMins >= 0 ? '+' : '-';
+    const extrasEl = document.getElementById('print-extras');
+    extrasEl.textContent = sign + extraH + 'h ' + extraM.toString().padStart(2,'0') + 'm extras';
+    extrasEl.style.color = extraMins >= 0 ? '#2D6B4F' : '#8B3A3A';
+
+    window.print();
+  }
+
+  // ── EXPORT / IMPORT ──
+  function exportData() {
+    const allData = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith('work-tracker')) {
+        allData[key] = JSON.parse(localStorage.getItem(key));
+      }
+    }
+    if (Object.keys(allData).length === 0) { showToast('No hay datos para exportar'); return; }
+    const blob = new Blob([JSON.stringify(allData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'registro-horas-backup.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Datos exportados ✓');
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        let count = 0;
+        for (const key in data) {
+          if (key.startsWith('work-tracker')) {
+            localStorage.setItem(key, JSON.stringify(data[key]));
+            count++;
+          }
+        }
+        renderEntries();
+        updateSummary();
+        showToast(`${count} mes${count !== 1 ? 'es' : ''} importado${count !== 1 ? 's' : ''} ✓`);
+      } catch(err) {
+        showToast('Error al leer el archivo');
+      }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
   }
 
   init();
