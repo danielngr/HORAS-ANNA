@@ -190,10 +190,9 @@
       <span class="chevron">▼</span>
     </div>
     <div class="settings-body" id="settings-body">
-      <div class="contract-grid">
+      <div class="contract-grid" style="grid-template-columns:1fr 1fr;">
         <div class="input-group"><label>Ore/sett.</label><input type="number" id="hours-week" value="40" min="1" max="60" step="0.5" oninput="saveSettings();updateSummary()"></div>
         <div class="input-group"><label>Giorni/sett.</label><input type="number" id="days-week" value="6" min="1" max="7" step="1" oninput="saveSettings();updateSummary()"></div>
-        <div class="input-group"><label>Sett./mese</label><input type="number" id="weeks-month" value="4.33" min="1" max="6" step="0.01" oninput="saveSettings();updateSummary()"></div>
       </div>
       <div class="hpd-info" id="hpd-info"></div>
     </div>
@@ -371,14 +370,12 @@
     const s = JSON.parse(localStorage.getItem('work-tracker-settings') || '{}');
     if (s.hoursWeek) document.getElementById('hours-week').value = s.hoursWeek;
     if (s.daysWeek)  document.getElementById('days-week').value  = s.daysWeek;
-    if (s.weeksMonth) document.getElementById('weeks-month').value = s.weeksMonth;
   }
 
   function saveSettings() {
     localStorage.setItem('work-tracker-settings', JSON.stringify({
-      hoursWeek:  document.getElementById('hours-week').value,
-      daysWeek:   document.getElementById('days-week').value,
-      weeksMonth: document.getElementById('weeks-month').value
+      hoursWeek: document.getElementById('hours-week').value,
+      daysWeek:  document.getElementById('days-week').value
     }));
     updateHpdInfo();
   }
@@ -389,11 +386,38 @@
     return Math.round((hw / dw) * 60);
   }
 
+  // Count working days in a given month based on days-per-week setting
+  function countWorkingDaysInMonth(year, month) {
+    const dw = parseInt(document.getElementById('days-week').value) || 6;
+    // Map dw to which weekdays are working: 5=Mon-Fri, 6=Mon-Sat, 7=Mon-Sun
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let count = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = new Date(year, month, d).getDay(); // 0=Sun,1=Mon,...,6=Sat
+      if (dw === 7) { count++; continue; }
+      if (dw === 6 && dow !== 0) { count++; continue; } // Mon-Sat
+      if (dw === 5 && dow !== 0 && dow !== 6) { count++; continue; } // Mon-Fri
+      // For other values, approximate proportionally
+      if (dw < 5) {
+        if (dow >= 1 && dow <= dw) count++;
+      }
+    }
+    return count;
+  }
+
+  function contractMinsForMonth() {
+    const workDays = countWorkingDaysInMonth(currentYear, currentMonth);
+    return workDays * hoursPerDayMins();
+  }
+
   function updateHpdInfo() {
     const mins = hoursPerDayMins();
     const h = Math.floor(mins/60), m = mins % 60;
+    const workDays = countWorkingDaysInMonth(currentYear, currentMonth);
+    const contractH = Math.floor(workDays * mins / 60);
+    const contractM = (workDays * mins) % 60;
     document.getElementById('hpd-info').textContent =
-      `Ore per giorno speciale (ferie/malattia): ${h}h ${String(m).padStart(2,'0')}m`;
+      `${workDays} giorni lav. · ${contractH}h${contractM > 0 ? contractM+'m' : ''} contrattuali · ${h}h${m > 0 ? m+'m' : ''}/giorno`;
   }
 
   function toggleSettings(el) {
@@ -407,6 +431,7 @@
     if (currentMonth > 11) { currentMonth = 0; currentYear++; }
     if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
     updateMonthLabel();
+    updateHpdInfo();
     renderEntries();
     updateSummary();
   }
@@ -561,9 +586,7 @@
       else if (e.entrata && e.uscita) totalMins += calcMins(e.entrata, e.uscita);
     });
 
-    const hw = parseFloat(document.getElementById('hours-week').value) || 40;
-    const wm = parseFloat(document.getElementById('weeks-month').value) || 4.33;
-    const contractMins = Math.round(hw * wm * 60);
+    const contractMins = contractMinsForMonth();
     const extraMins = totalMins - contractMins;
     const sign = extraMins >= 0 ? '+' : '-';
 
@@ -587,9 +610,7 @@
       if (e.tipo) totalMins += hpdMins;
       else if (e.entrata && e.uscita) totalMins += calcMins(e.entrata, e.uscita);
     });
-    const hw = parseFloat(document.getElementById('hours-week').value) || 40;
-    const wm = parseFloat(document.getElementById('weeks-month').value) || 4.33;
-    const contractMins = Math.round(hw * wm * 60);
+    const contractMins = contractMinsForMonth();
     const extraMins = totalMins - contractMins;
     const sign = extraMins >= 0 ? '+' : '-';
 
