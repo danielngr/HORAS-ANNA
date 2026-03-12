@@ -690,7 +690,13 @@
     const entrada = document.getElementById('manual-entrada').value;
     const salida = document.getElementById('manual-salida').value;
     if (!date || !entrada || !salida) { showToast('Completa todos los campos'); return; }
-    if (entrada >= salida) { showToast('La salida debe ser posterior a la entrada'); return; }
+    // Allow overnight shifts: if salida <= entrada, assume next day
+    const [eh, em] = entrada.split(':').map(Number);
+    const [sh, sm] = salida.split(':').map(Number);
+    const entradaMins = eh * 60 + em;
+    const salidaMins = sh * 60 + sm;
+    // Only block if same time exactly
+    if (entradaMins === salidaMins) { showToast('La entrada y salida no pueden ser iguales'); return; }
     addEntry(date, entrada, salida);
     document.getElementById('manual-entrada').value = '';
     document.getElementById('manual-salida').value = '';
@@ -768,7 +774,9 @@
   function calcMins(h1, h2) {
     const [ah, am] = h1.split(':').map(Number);
     const [bh, bm] = h2.split(':').map(Number);
-    return (bh*60+bm) - (ah*60+am);
+    let mins = (bh*60+bm) - (ah*60+am);
+    if (mins <= 0) mins += 24 * 60; // overnight shift
+    return mins;
   }
 
   function updateSummary() {
